@@ -66,6 +66,7 @@ namespace RingBuffer
 			}
 
 			_redo.ForgetForwardItems();
+			_undo.WriteUndoQue();
 			WriteBufferState();
 
 		}
@@ -104,14 +105,14 @@ namespace RingBuffer
 					}
 				}
 				WriteBufferState();
+				return true;
 			}
 			else
 			{
 				item = default;
 				Console.WriteLine("Can't do Redo when there's nowhere to redo");
+				return false;
 			}
-			if (!item.Equals(default)) return false;
-			else return false;
 		}
 
 		public bool TryGetUndo(out T item)
@@ -141,24 +142,37 @@ namespace RingBuffer
 							actualBuffer[i] = actualBuffer[i - 1];
 						}
 					}
-
+					WriteBufferState();
+					return true;
 				}
 				else
 				{
-					Console.WriteLine("Can't do Undo when there's nowhere to undo");
+					for (int i = actualBuffer.Length - 1; i >= 0; i--)
+					{
+                            if (!actualBuffer[i].Equals(default))
+                            {
+								item = actualBuffer[i];
+								_redo.AddToRedo(item);
+								actualBuffer[i] = default;
+								count--;
+								spaceForNewObj--;
+								WriteBufferState();
+								return true;
+							}
+					}
 
+					Console.WriteLine("Can't do Undo when there's nowhere to undo 1");
+					WriteBufferState();
 					item = default;
+					return false;
 				}
-
-				WriteBufferState();
 			}
 			else
 			{
 				item = default;
-				Console.WriteLine("Can't do Undo when there's nowhere to undo");
+				Console.WriteLine("Can't do Undo when there's nowhere to undo 2");
+				return false;
 			}
-			if (!item.Equals(default)) return false;
-			else return false;
 		}
 
 		public void WriteBufferState()
@@ -226,14 +240,26 @@ namespace RingBuffer
 				itemIndex--;
 				prevItemsCount -= 1;
 
+				WriteUndoQue();
 				return tmp;
 			}
 			else
 			{
+				WriteUndoQue();
 				Console.WriteLine("No items in Undo, there's no way to get back in actions");
 				return default;
 			}
 		}
+
+		public void WriteUndoQue()
+        {
+			Console.WriteLine("");
+			foreach (T a in previousItems)
+            {
+				Console.Write("!> "+ a);
+            }
+			Console.WriteLine("");
+        }
 	}
 
 	public class Redo<T>
